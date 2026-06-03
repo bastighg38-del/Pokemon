@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pokémon Roguelike</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="titlebar">
+    <div class="drag-region"></div>
+
+    <div class="window-controls">
+        <button onclick="window.electronAPI.minimize()">—</button>
+        <button onclick="window.electronAPI.maximize()">▢</button>
+        <button class="close" onclick="window.electronAPI.close()">✕</button>
+    </div>
+</div>
+    <h1>Pokémon Roguelike</h1>
+
+    <div class="button-bar">
+        <button id="btnPokemon" class="active"><i class="fas fa-list"></i> Pokémon</button>
+        <button id="btnMoves"><i class="fas fa-bolt"></i> Attacken</button>
+        <button id="btnItems"><i class="fas fa-gem"></i> Items</button>
+        <button id="btnDebugItems"><i class="fas fa-dice-d6"></i> Debug Items</button>
+        <button id="btnTree"><i class="fas fa-project-diagram"></i> Baum</button>
+        <button id="btnShiny"><i class="fas fa-star"></i> Shiny</button>
+        <button id="btnTrainer"><i class="fas fa-user-ninja"></i> Trainer</button>
+    </div>
+
+    <input type="text" id="searchInput" placeholder="🔍 Suche Pokémon, Attacke oder Item ...">
+
+    <!-- Pokémon-Tabelle -->
+    <div id="pokemonContainer">
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr><th>Nr.</th><th>Pokémon</th><th>Typ(en)</th><th>KP</th><th>Ang.</th><th>Vert.</th><th>Sp.Ang.</th><th>Sp.Vert.</th><th>Init.</th><th>Summe</th><th>Aktionen</th></tr>
+                </thead>
+                <tbody id="pokemonTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Attacken-Tabelle -->
+    <div id="movesContainer" style="display:none;">
+        <div class="table-container">
+            <table id="movesTable">
+                <thead>
+                    <tr><th>ID</th><th>Name</th><th>Typ</th><th>Kategorie</th><th>Stärke</th><th>Genauigkeit</th><th>AP</th><th>Priorität</th><th>TM/VM</th><th>Beschreibung</th></tr>
+                </thead>
+                <tbody id="movesTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Items-Tabelle -->
+    <div id="itemsContainer" style="display:none;">
+        <div class="table-container">
+            <table id="itemsTable">
+                <thead>
+                    <tr><th>Icon</th><th>Name</th><th>Kategorie</th><th>Beschreibung</th></tr>
+                </thead>
+                <tbody id="itemsTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Debug Items -->
+    <div id="debugItemsContainer" style="display:none;">
+        <div style="max-width: 900px; margin: 0 auto;">
+            <h2 style="color:#f8d030; margin:20px 0 10px;">🎲 Zufällige Items</h2>
+            <p style="color:#aaa; margin-bottom:20px;">Wähle eines der drei Items aus – Bälle (außer Meisterball) gibt es 10x!</p>
+            <div id="debugItemsGrid" class="debug-items-grid"></div>
+            <button id="btnRefreshDebugItems" class="detail-btn" style="margin-top:20px; font-size:1rem; padding:10px 24px;">
+                <i class="fas fa-sync-alt"></i> Neue Items
+            </button>
+            <div id="debugSelectionMessage" style="margin-top:16px; font-size:1.1rem; color:#78c850; min-height:28px;"></div>
+        </div>
+    </div>
+
+    <!-- Baum-Debug-Container -->
+    <div id="treeContainer" style="display:none;">
+        <div style="max-width: 900px; margin: 0 auto; text-align: center;">
+            <h2 style="color:#f8d030; margin:20px 0 10px;">🌳 Baumdiagramm – Pfadansicht</h2>
+            <div id="treeDebugInfo" style="margin:10px; padding:8px 16px; background:#1b4332; color:white; border-radius:20px; font-size:16px; min-height:28px;">
+                Klicke auf einen Startknoten (Ebene 0), um den Pfad zu beginnen.
+            </div>
+            <button id="resetTreeBtn" class="detail-btn" style="margin-top:10px; background:#2a5f8a; border:none; padding:8px 20px; border-radius:20px; cursor:pointer; font-weight:bold;">
+                <i class="fas fa-undo-alt"></i> Pfad zurücksetzen
+            </button>
+            <div id="tree" style="position:relative; width:700px; height:1000px; margin:20px auto;">
+                <svg id="treeLines" width="700" height="1000"></svg>
+            </div>
+        </div>
+    </div>
+
+    <!-- Shiny Encounter Container -->
+    <div id="shinyContainer" style="display:none;">
+        <div style="max-width: 600px; margin: 0 auto; text-align: center;">
+            <h2 style="color:#f8d030; margin:20px 0 10px;">✨ Shiny Begegnung</h2>
+            <p style="color:#aaa; margin-bottom:10px;">Ein wildes Shiny-Pokémon erscheint!</p>
+            <div id="shinyEncounterCard" style="background:#1a2532; border:2px solid #f8d030; border-radius:24px; padding:30px; display:inline-block; box-shadow:0 0 20px rgba(248,208,48,0.4);">
+                <img id="shinySprite" src="" alt="Shiny" style="width:150px; height:150px; background:#0f141c; border-radius:50%; padding:15px; margin-bottom:15px;">
+                <h2 id="shinyName" style="color:#f8d030; margin:10px 0;">...</h2>
+                <div id="shinyTypes" style="margin:10px 0;"></div>
+                <div style="margin:15px 0;">
+                    <span style="margin:0 10px;">Shiny Level: <input type="number" id="shinyLevelInput" value="50" min="1" max="100" style="width:60px; background:#1e2a3a; color:white; border:1px solid #3a6ea5; border-radius:8px; padding:5px; text-align:center;"></span>
+                    <span style="margin:0 10px;">Glurak Level: <input type="number" id="glurakLevelInput" value="50" min="1" max="100" style="width:60px; background:#1e2a3a; color:white; border:1px solid #3a6ea5; border-radius:8px; padding:5px; text-align:center;"></span>
+                </div>
+                <div style="margin-top:20px;">
+                    <button id="shinyFightBtn" class="battle-btn" style="font-size:1.2rem; padding:12px 30px;"><i class="fas fa-crosshairs"></i> Kämpfen!</button>
+                    <button id="shinyRerollBtn" class="detail-btn" style="margin-left:10px; background:#2a5f8a;"><i class="fas fa-dice"></i> Anderes Shiny</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Legendäre Begegnung -->
+    <div id="legiContainer" style="display:none;">
+        <div style="max-width: 600px; margin: 30px auto 0 auto; text-align: center;">
+            <h2 style="color:#d4a5ff; margin:20px 0 10px;">👑 Legendäre Begegnung</h2>
+            <p style="color:#aaa; margin-bottom:10px;">Ein wildes legendäres Pokémon erscheint!</p>
+            <div id="legiEncounterCard" style="background:#1a2532; border:2px solid #b388ff; border-radius:24px; padding:30px; display:inline-block; box-shadow:0 0 20px rgba(179,136,255,0.4);">
+                <img id="legiSprite" src="" alt="Legendär" style="width:150px; height:150px; background:#0f141c; border-radius:50%; padding:15px; margin-bottom:15px;">
+                <h2 id="legiName" style="color:#d4a5ff; margin:10px 0;">...</h2>
+                <div id="legiTypes" style="margin:10px 0;"></div>
+                <div style="margin:15px 0;">
+                    <span style="margin:0 10px;">Legi Level: <input type="number" id="legiLevelInput" value="70" min="1" max="100" style="width:60px; background:#1e2a3a; color:white; border:1px solid #3a6ea5; border-radius:8px; padding:5px; text-align:center;"></span>
+                    <span style="margin:0 10px;">Glurak Level: <input type="number" id="legiGlurakLevelInput" value="50" min="1" max="100" style="width:60px; background:#1e2a3a; color:white; border:1px solid #3a6ea5; border-radius:8px; padding:5px; text-align:center;"></span>
+                </div>
+                <div style="margin-top:20px;">
+                    <button id="legiFightBtn" class="battle-btn" style="font-size:1.2rem; padding:12px 30px;"><i class="fas fa-crosshairs"></i> Kämpfen!</button>
+                    <button id="legiRerollBtn" class="detail-btn" style="margin-left:10px; background:#2a5f8a;"><i class="fas fa-dice"></i> Anderes Legi</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Trainer Kampf Container -->
+    <div id="trainerContainer" style="display:none;">
+        <div style="max-width: 600px; margin: 0 auto; text-align: center;">
+            <h2 style="color:#f8d030; margin:20px 0 10px;">🥊 Trainer Kampf</h2>
+            <p style="color:#aaa; margin-bottom:10px;">Wähle eine Trainerklasse und fordere ein zufälliges Pokémon heraus!</p>
+            <div style="margin:15px 0;">
+                <label for="trainerClassSelect" style="color:#ccd; font-weight:bold;">Trainerklasse:</label>
+                <select id="trainerClassSelect" style="background:#1e2a3a; color:white; border:1px solid #3a6ea5; border-radius:8px; padding:8px; font-size:1rem; margin-left:10px;"></select>
+            </div>
+            <div id="trainerTypeInfo" style="margin:5px 0; color:#aaa; font-size:0.9rem;"></div>
+            <div id="trainerPartyInfo" style="margin:5px 0; color:#5bc0de; font-weight:bold;"></div>
+            <div id="trainerEncounterCard" style="background:#1a2532; border:2px solid #3a6ea5; border-radius:24px; padding:30px; display:inline-block; box-shadow:0 0 20px rgba(58,110,165,0.4); margin-top:20px;">
+                <img id="trainerSprite" src="" alt="Gegner" style="width:150px; height:150px; background:#0f141c; border-radius:50%; padding:15px; margin-bottom:15px;">
+                <h2 id="trainerEnemyName" style="color:#f8d030; margin:10px 0;">...</h2>
+                <div id="trainerEnemyTypes" style="margin:10px 0;"></div>
+                <div style="margin:15px 0;">
+                    <span style="margin:0 10px;">Glurak Level: <input type="number" id="trainerGlurakLevelInput" value="50" min="1" max="100" style="width:60px; background:#1e2a3a; color:white; border:1px solid #3a6ea5; border-radius:8px; padding:5px; text-align:center;"></span>
+                    <span style="margin:0 10px;">Gegner Level: <span id="trainerEnemyLevelDisplay" style="font-weight:bold; color:#f8d030;">47</span></span>
+                </div>
+                <div style="margin-top:20px;">
+                    <button id="trainerFightBtn" class="battle-btn" style="font-size:1.2rem; padding:12px 30px;"><i class="fas fa-crosshairs"></i> Kämpfen!</button>
+                    <button id="trainerRerollBtn" class="detail-btn" style="margin-left:10px; background:#2a5f8a;"><i class="fas fa-dice"></i> Anderes Pokémon</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pokémon-Detail-Modal -->
+    <div id="pokemonModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <div id="modalDynamicContent"></div>
+        </div>
+    </div>
+
+    <!-- Kontext-Popup -->
+    <div id="contextPopup" class="context-popup"></div>
+
+    <!-- Kampf-Overlay -->
+    <div id="battleOverlay">
+        <div class="battle-arena">
+            <div class="battle-header">⚔️ POKÉMON KAMPF ⚔️</div>
+            <div class="level-selector">
+                <span>Level Spieler:</span>
+                <input type="range" id="playerLevelSlider" min="1" max="100" value="50" step="1">
+                <span id="playerLevelValue">50</span>
+                <span style="margin-left:30px;">Level Gegner:</span>
+                <input type="range" id="enemyLevelSlider" min="1" max="100" value="50" step="1">
+                <span id="enemyLevelValue">50</span>
+            </div>
+            <div style="text-align:center; min-height:28px;" id="weatherDisplay"></div>
+            <div class="battle-field">
+                <div class="battle-pokemon" id="battlePlayerPoke">
+                    <div style="display: flex; align-items: center; justify-content: center;">
+                        <h3 id="battlePlayerName">-</h3>
+                        <i class="fas fa-gift gear-icon item-edit-icon" id="playerEditItemBtn" title="Item geben"></i>
+                        <i class="fas fa-cog gear-icon" id="playerEditMovesBtn" title="Attacken bearbeiten"></i>
+                    </div>
+                    <img id="battlePlayerImg" src="" alt="">
+                    <div class="type-badges" id="battlePlayerTypes"></div>
+                    <div class="status-icons" id="playerStatusIcons"></div>
+                    <div id="playerItemDisplay" class="item-display"></div>
+                    <div class="hp-bar-outer">
+                        <span class="hp-text" id="battlePlayerHPText">100%</span>
+                        <div class="hp-bar-inner" id="battlePlayerHPBar"></div>
+                    </div>
+                    <div id="playerSubstituteBar" style="display:none;">
+                        <div class="substitute-hp-outer">
+                            <span class="substitute-hp-text" id="playerSubHPText">0</span>
+                            <div class="substitute-hp-inner" id="playerSubHPBar"></div>
+                        </div>
+                    </div>
+                    <div class="boost-info" id="battlePlayerBoosts"></div>
+                    <div class="accuracy-info" id="battlePlayerAccuracy"></div>
+                    <div class="crit-info" id="battlePlayerCrit"></div>
+                    <div class="seed-indicator" id="playerSeedIndicator"></div>
+                </div>
+                <div class="battle-vs">VS</div>
+                <div class="battle-pokemon" id="battleEnemyPoke">
+                    <div style="display: flex; align-items: center; justify-content: center;">
+                        <h3 id="battleEnemyName">-</h3>
+                        <i class="fas fa-gift gear-icon item-edit-icon" id="enemyEditItemBtn" title="Item geben"></i>
+                        <i class="fas fa-cog gear-icon" id="enemyEditMovesBtn" title="Attacken bearbeiten"></i>
+                    </div>
+                    <img id="battleEnemyImg" src="" alt="">
+                    <div class="type-badges" id="battleEnemyTypes"></div>
+                    <div class="status-icons" id="enemyStatusIcons"></div>
+                    <div id="enemyItemDisplay" class="item-display"></div>
+                    <div class="hp-bar-outer">
+                        <span class="hp-text" id="battleEnemyHPText">100%</span>
+                        <div class="hp-bar-inner" id="battleEnemyHPBar"></div>
+                    </div>
+                    <div id="enemyPartyDisplay" style="color:#5bc0de; font-size:0.8rem; margin-top:2px;"></div>
+                    <div id="enemySubstituteBar" style="display:none;">
+                        <div class="substitute-hp-outer">
+                            <span class="substitute-hp-text" id="enemySubHPText">0</span>
+                            <div class="substitute-hp-inner" id="enemySubHPBar"></div>
+                        </div>
+                    </div>
+                    <div class="boost-info" id="battleEnemyBoosts"></div>
+                    <div class="accuracy-info" id="battleEnemyAccuracy"></div>
+                    <div class="crit-info" id="battleEnemyCrit"></div>
+                    <div class="seed-indicator" id="enemySeedIndicator"></div>
+                </div>
+            </div>
+            <div class="battle-log" id="battleLog"><div class="log-entry log-info">🎮 Wähle eine Attacke!</div></div>
+            <div class="battle-result" id="battleResult"></div>
+            <div class="battle-moves" id="battleMoveButtons"></div>
+            <button class="battle-close-btn" id="battleCloseBtn"><i class="fas fa-times"></i> Kampf beenden</button>
+        </div>
+    </div>
+
+    <!-- Attacken-Editor-Modal -->
+    <div id="moveEditorModal" class="modal" style="z-index: 3000;">
+        <div class="modal-content move-editor-modal" style="max-width: 700px;">
+            <span class="close" id="closeMoveEditor">&times;</span>
+            <h2 id="editorTitle">Attacken bearbeiten</h2>
+            <div id="editorMovesContainer"></div>
+            <div style="margin-top: 20px; border-top: 1px solid #3a6ea5; padding-top: 15px;">
+                <label><strong>🎁 Getragenes Item:</strong></label>
+                <select id="editorItemSelect" class="move-select">
+                    <option value="">-- Kein Item --</option>
+                </select>
+            </div>
+            <button id="saveMoveChanges" class="detail-btn" style="background: #3a6ea5;"><i class="fas fa-save"></i> Speichern</button>
+            <button id="cancelMoveChanges" class="detail-btn">Abbrechen</button>
+        </div>
+    </div>
+
+    <!-- Metronom-Modal -->
+    <div id="metronomeModal" class="modal" style="z-index: 3500;">
+        <div class="modal-content" style="max-width: 550px;">
+            <span class="close" id="closeMetronome">&times;</span>
+            <h2>🎵 Metronom – Wähle eine Attacke</h2>
+            <p style="font-size:0.85rem; color:#aaa;">Wähle eine beliebige Schadens‑Attacke aus, die Metronom einsetzen soll:</p>
+            <select id="metronomeSelect" size="12"></select><br>
+            <button id="confirmMetronome" class="detail-btn" style="background:#3a6ea5; font-size:1rem;"><i class="fas fa-check"></i> Einsetzen!</button>
+            <button id="cancelMetronome" class="detail-btn">Abbrechen</button>
+        </div>
+    </div>
+
+    <script src="data.js"></script>
+    <script src="kampf.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
